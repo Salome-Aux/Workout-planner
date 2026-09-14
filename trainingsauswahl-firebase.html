@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trainingsauswahl</title>
+<!-- Eigenstaendige Version fuer eigene Domain/WordPress: nutzt localStorage statt Claude-Speicher -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1B1A17;
+    --surface:#242220;
+    --surface-2:#2D2A26;
+    --border:#3A3630;
+    --text:#EDE9E2;
+    --text-dim:#A39E93;
+    --accent:#C9922F;
+    --accent-text:#1B1A17;
+    --low:#6E8C6B;
+    --mid:#C9922F;
+    --high:#B24C32;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    padding:24px 16px 64px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:28px;
+    font-weight:700;
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--text-dim);font-size:14px;margin:0 0 28px;line-height:1.5;max-width:44ch;}
+
+  section{margin-bottom:22px;}
+  .label{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:var(--text-dim);
+    margin-bottom:8px;
+  }
+  .chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{
+    padding:7px 14px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    font-size:13.5px;
+    cursor:pointer;
+    user-select:none;
+    transition:background .15s, border-color .15s, color .15s;
+  }
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:600;}
+
+  .row{display:flex;gap:10px;align-items:center;}
+  .num{
+    width:72px;
+    padding:9px 10px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    font-size:14px;
+  }
+  select{
+    padding:9px 10px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    font-size:14px;
+    flex:1;
+  }
+
+  .pick-btn{
+    width:100%;
+    padding:16px;
+    border-radius:var(--radius);
+    border:none;
+    background:var(--accent);
+    color:var(--accent-text);
+    font-family:'Space Grotesk', sans-serif;
+    font-size:16px;
+    font-weight:700;
+    cursor:pointer;
+    margin-top:6px;
+  }
+  .pick-btn:active{transform:scale(0.99);}
+  .count{font-size:13px;color:var(--text-dim);margin-top:8px;text-align:center;}
+
+  .result{
+    margin-top:18px;
+    padding:18px;
+    border-radius:var(--radius);
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    display:none;
+  }
+  .result.show{display:block;}
+  .result-name{font-family:'Space Grotesk', sans-serif;font-size:19px;font-weight:700;margin-bottom:6px;}
+  .result-meta{font-size:13.5px;color:var(--text-dim);line-height:1.7;}
+  .result-actions{display:flex;gap:10px;margin-top:14px;}
+  .btn-ghost{
+    padding:9px 16px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:transparent;
+    color:var(--text);
+    font-size:13.5px;
+    cursor:pointer;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+  }
+  .btn-ghost:hover{border-color:var(--accent);}
+
+  hr{border:none;border-top:1px solid var(--border);margin:30px 0;}
+
+  .list-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:12px 4px;
+    border-bottom:1px solid var(--border);
+  }
+  .li-main{min-width:0;}
+  .li-name{font-size:14.5px;font-weight:600;}
+  .li-meta{font-size:12.5px;color:var(--text-dim);margin-top:2px;}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;position:relative;top:-1px;}
+  .li-del{
+    background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;padding:4px 8px;flex-shrink:0;
+  }
+  .li-del:hover{color:var(--high);}
+
+  .add-toggle{
+    background:none;border:1px dashed var(--border);color:var(--text-dim);
+    width:100%;padding:12px;border-radius:var(--radius);cursor:pointer;font-size:14px;margin-top:6px;
+  }
+  .add-toggle:hover{border-color:var(--accent);color:var(--text);}
+
+  .form{display:none;margin-top:14px;gap:10px;flex-direction:column;}
+  .form.show{display:flex;}
+  input[type=text]{
+    padding:10px 12px;border-radius:8px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text);font-size:14px;width:100%;
+  }
+  .form-row{display:flex;gap:10px;}
+  .form-row > *{flex:1;}
+  .save-btn{
+    padding:11px;border-radius:8px;border:none;background:var(--accent);
+    color:var(--accent-text);font-weight:600;cursor:pointer;font-size:14px;
+  }
+  ::placeholder{color:var(--text-dim);opacity:.7;}
+  .empty{color:var(--text-dim);font-size:13.5px;padding:16px 4px;text-align:center;}
+
+  .schedule-row{display:flex;gap:8px;margin-top:12px;}
+  .dt-input{
+    flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text);font-size:13px;
+  }
+  .upcoming-item{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:12px 4px;border-bottom:1px solid var(--border);
+  }
+  .up-when{font-size:12.5px;color:var(--accent);font-weight:600;margin-top:2px;}
+  .up-actions{display:flex;gap:6px;flex-shrink:0;}
+  .up-btn{
+    background:none;border:1px solid var(--border);color:var(--text-dim);
+    border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer;text-decoration:none;
+  }
+  .up-btn:hover{border-color:var(--accent);color:var(--text);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Trainingsauswahl</h1>
+  <p class="sub">Filtern statt suchen. Wähle Art, Dauer, Intensität, Quelle oder Trainer:in — und lass dir ein passendes Workout auslosen.</p>
+
+  <section>
+    <div class="label">Art</div>
+    <div class="chips" id="chips-art"></div>
+  </section>
+
+  <section>
+    <div class="label">Quelle</div>
+    <div class="chips" id="chips-quelle"></div>
+  </section>
+
+  <section>
+    <div class="label">Intensität</div>
+    <div class="chips" id="chips-intensitaet"></div>
+  </section>
+
+  <section>
+    <div class="label">Dauer (Minuten)</div>
+    <div class="row">
+      <input class="num" type="number" id="dauer-min" placeholder="min" min="0">
+      <span style="color:var(--text-dim)">bis</span>
+      <input class="num" type="number" id="dauer-max" placeholder="max" min="0">
+    </div>
+  </section>
+
+  <section>
+    <div class="label">Trainer:in</div>
+    <select id="trainer-select"><option value="">Alle</option></select>
+  </section>
+
+  <button class="pick-btn" id="pick-btn">Workout auslosen</button>
+  <div class="count" id="match-count"></div>
+
+  <div class="result" id="result">
+    <div class="result-name" id="result-name"></div>
+    <div class="result-meta" id="result-meta"></div>
+    <div class="result-actions">
+      <button class="btn-ghost" id="reroll-btn">Nochmal</button>
+      <a class="btn-ghost" id="open-link" href="#" target="_blank" rel="noopener" style="display:none;">Öffnen</a>
+    </div>
+    <div class="schedule-row">
+      <input type="datetime-local" id="schedule-input" class="dt-input">
+      <button class="btn-ghost" id="schedule-btn">Termin planen</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="label" id="upcoming-label">Anstehend</div>
+  <div id="upcoming-list"></div>
+
+  <hr>
+
+  <div class="label" id="list-label">Alle Einträge</div>
+  <div id="list"></div>
+
+  <button class="add-toggle" id="add-toggle">+ Neuer Eintrag</button>
+  <div class="form" id="add-form">
+    <input type="text" id="f-name" placeholder="Name des Workouts">
+    <div class="form-row">
+      <select id="f-art">
+        <option>HIIT</option>
+        <option>Kraft</option>
+        <option>Cardio</option>
+        <option>Kettlebell</option>
+        <option>Mobility / Yoga</option>
+        <option>Sonstiges</option>
+      </select>
+      <select id="f-quelle">
+        <option>FitOn</option>
+        <option>YouTube</option>
+        <option>Crossrope</option>
+        <option>Nike Training Club</option>
+        <option>Sonstiges</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <input class="num" style="width:100%" type="number" id="f-dauer" placeholder="Dauer (Min.)" min="0">
+      <select id="f-intensitaet">
+        <option value="niedrig">niedrig</option>
+        <option value="mittel">mittel</option>
+        <option value="hoch">hoch</option>
+      </select>
+    </div>
+    <input type="text" id="f-trainer" placeholder="Trainer:in (optional)">
+    <input type="text" id="f-link" placeholder="Link (optional)">
+    <button class="save-btn" id="save-btn">Eintrag speichern</button>
+  </div>
+
+  <hr>
+  <div class="label">Sicherung</div>
+  <div class="row">
+    <button class="btn-ghost" id="export-btn">Backup exportieren</button>
+    <button class="btn-ghost" id="import-btn">Backup importieren</button>
+    <input type="file" id="import-file" accept="application/json" style="display:none">
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+// Firebase-Konfiguration (Projekt: training-planner-alexandra)
+const firebaseConfig = {
+  apiKey: "AIzaSyCgoi4Jr9-I6G2U-n9AxHHLDJQm7Ppx_6w",
+  authDomain: "training-planner-alexandra.firebaseapp.com",
+  projectId: "training-planner-alexandra",
+  storageBucket: "training-planner-alexandra.firebasestorage.app",
+  messagingSenderId: "95435995714",
+  appId: "1:95435995714:web:bb0992c767313f9a6f0bdb"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const docRef = doc(db, "trainingsauswahl", "data");
+
+// Speicher-Shim: gleiche Schnittstelle wie zuvor (get/set), jetzt gegen Firestore statt localStorage
+const storage = {
+  async get(key){
+    const snap = await getDoc(docRef);
+    if(!snap.exists()) return null;
+    const data = snap.data();
+    return (key in data && data[key] != null) ? {key, value: data[key]} : null;
+  },
+  async set(key, value){
+    await setDoc(docRef, {[key]: value}, {merge:true});
+    return {key, value};
+  }
+};
+
+const ART_OPTIONS = ["HIIT","Kraft","Cardio","Kettlebell","Mobility / Yoga","Sonstiges"];
+const QUELLE_OPTIONS = ["FitOn","YouTube","Crossrope","Nike Training Club","Sonstiges"];
+const INTENSITAET_OPTIONS = ["niedrig","mittel","hoch"];
+const INTENSITAET_COLOR = {niedrig:"var(--low)", mittel:"var(--mid)", hoch:"var(--high)"};
+
+const STARTER_DATA = [
+  {id:crypto.randomUUID(), name:"Kettlebell Flow (Beispiel – bitte anpassen)", art:"Kettlebell", quelle:"YouTube", dauer:20, intensitaet:"mittel", trainer:"", link:""},
+  {id:crypto.randomUUID(), name:"HIIT Sprint Intervalle (Beispiel)", art:"HIIT", quelle:"Nike Training Club", dauer:25, intensitaet:"hoch", trainer:"", link:""},
+  {id:crypto.randomUUID(), name:"Jump Rope Basics (Beispiel)", art:"Cardio", quelle:"Crossrope", dauer:15, intensitaet:"mittel", trainer:"", link:""},
+  {id:crypto.randomUUID(), name:"Ganzkörper Kraft (Beispiel)", art:"Kraft", quelle:"FitOn", dauer:30, intensitaet:"mittel", trainer:"", link:""}
+];
+
+let workouts = [];
+let scheduled = [];
+let currentPick = null;
+let filters = {art:new Set(), quelle:new Set(), intensitaet:new Set(), min:null, max:null, trainer:""};
+
+async function loadScheduled(){
+  try{
+    const res = await storage.get('scheduled', false);
+    scheduled = res ? JSON.parse(res.value) : [];
+  }catch(e){ scheduled = []; }
+}
+async function saveScheduled(){
+  try{ await storage.set('scheduled', JSON.stringify(scheduled), false); }
+  catch(e){ console.error('Speichern der Termine fehlgeschlagen', e); }
+}
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmtICSDate(d){
+  return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+'T'+pad(d.getUTCHours())+pad(d.getUTCMinutes())+'00Z';
+}
+function buildICS(entry){
+  const start = new Date(entry.when);
+  const end = new Date(start.getTime() + (entry.dauer||30)*60000);
+  const lines = [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Trainingsauswahl//DE','BEGIN:VEVENT',
+    'UID:'+entry.id+'@trainingsauswahl',
+    'DTSTAMP:'+fmtICSDate(new Date()),
+    'DTSTART:'+fmtICSDate(start),
+    'DTEND:'+fmtICSDate(end),
+    'SUMMARY:'+entry.name,
+    'DESCRIPTION:'+entry.art+' \\u00b7 '+entry.quelle+' \\u00b7 '+entry.dauer+' Min',
+    'END:VEVENT','END:VCALENDAR'
+  ];
+  return lines.join('\r\n');
+}
+function downloadICS(entry){
+  const blob = new Blob([buildICS(entry)], {type:'text/calendar'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = entry.name.replace(/[^a-z0-9]+/gi,'_').toLowerCase() + '.ics';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function renderUpcoming(){
+  const el = document.getElementById('upcoming-list');
+  const now = new Date();
+  const upcoming = scheduled
+    .filter(s => new Date(s.when) >= new Date(now.getTime() - 60*60000))
+    .sort((a,b)=> new Date(a.when) - new Date(b.when));
+  document.getElementById('upcoming-label').textContent = upcoming.length ? `Anstehend (${upcoming.length})` : 'Anstehend';
+  if(upcoming.length === 0){
+    el.innerHTML = '<div class="empty">Noch nichts geplant. Wähle oben ein Workout aus und plane einen Termin.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  upcoming.forEach(s=>{
+    const d = new Date(s.when);
+    const whenStr = d.toLocaleString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+    const item = document.createElement('div');
+    item.className = 'upcoming-item';
+    item.innerHTML = `
+      <div class="li-main">
+        <div class="li-name">${s.name}</div>
+        <div class="up-when">${whenStr}</div>
+      </div>
+      <div class="up-actions">
+        <button class="up-btn" data-act="ics">Kalender</button>
+        <button class="up-btn" data-act="del">Entfernen</button>
+      </div>
+    `;
+    item.querySelector('[data-act="ics"]').onclick = ()=> downloadICS(s);
+    item.querySelector('[data-act="del"]').onclick = async ()=>{
+      scheduled = scheduled.filter(x=>x.id !== s.id);
+      await saveScheduled();
+      renderUpcoming();
+    };
+    el.appendChild(item);
+  });
+}
+
+async function loadWorkouts(){
+  try{
+    const res = await storage.get('workouts', false);
+    workouts = res ? JSON.parse(res.value) : STARTER_DATA;
+    if(!res){ await storage.set('workouts', JSON.stringify(workouts), false); }
+  }catch(e){
+    workouts = STARTER_DATA;
+  }
+}
+async function saveWorkouts(){
+  try{ await storage.set('workouts', JSON.stringify(workouts), false); }
+  catch(e){ console.error('Speichern fehlgeschlagen', e); }
+}
+
+function renderChips(containerId, options, key){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  options.forEach(opt=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (filters[key].has(opt) ? ' active' : '');
+    chip.textContent = opt;
+    chip.onclick = ()=>{
+      if(filters[key].has(opt)) filters[key].delete(opt);
+      else filters[key].add(opt);
+      renderChips(containerId, options, key);
+      updateMatchCount();
+    };
+    el.appendChild(chip);
+  });
+}
+
+function renderTrainerSelect(){
+  const sel = document.getElementById('trainer-select');
+  const trainers = [...new Set(workouts.map(w=>w.trainer).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Alle</option>' + trainers.map(t=>`<option value="${t}">${t}</option>`).join('');
+  sel.value = filters.trainer;
+}
+
+function matches(w){
+  if(filters.art.size && !filters.art.has(w.art)) return false;
+  if(filters.quelle.size && !filters.quelle.has(w.quelle)) return false;
+  if(filters.intensitaet.size && !filters.intensitaet.has(w.intensitaet)) return false;
+  if(filters.min!==null && !isNaN(filters.min) && w.dauer < filters.min) return false;
+  if(filters.max!==null && !isNaN(filters.max) && w.dauer > filters.max) return false;
+  if(filters.trainer && w.trainer !== filters.trainer) return false;
+  return true;
+}
+
+function updateMatchCount(){
+  const n = workouts.filter(matches).length;
+  document.getElementById('match-count').textContent =
+    n === 0 ? 'Keine Treffer mit diesen Filtern' :
+    n === 1 ? '1 Workout passt' : n + ' Workouts passen';
+  renderList();
+}
+
+function pickRandom(){
+  const pool = workouts.filter(matches);
+  const resultEl = document.getElementById('result');
+  if(pool.length === 0){
+    resultEl.classList.remove('show');
+    return;
+  }
+  const w = pool[Math.floor(Math.random()*pool.length)];
+  currentPick = w;
+  document.getElementById('result-name').textContent = w.name;
+  document.getElementById('result-meta').innerHTML =
+    `${w.art} · ${w.quelle} · ${w.dauer} Min · <span class="dot" style="background:${INTENSITAET_COLOR[w.intensitaet]}"></span>${w.intensitaet}` +
+    (w.trainer ? ` · ${w.trainer}` : '');
+  const linkEl = document.getElementById('open-link');
+  if(w.link){ linkEl.href = w.link; linkEl.style.display='inline-flex'; }
+  else{ linkEl.style.display='none'; }
+  resultEl.classList.add('show');
+}
+
+function renderList(){
+  const listEl = document.getElementById('list');
+  const filtered = workouts.filter(matches);
+  document.getElementById('list-label').textContent =
+    (filtered.length === workouts.length) ? `Alle Einträge (${workouts.length})` : `Gefiltert (${filtered.length} von ${workouts.length})`;
+  if(filtered.length === 0){
+    listEl.innerHTML = '<div class="empty">Keine Einträge in dieser Auswahl.</div>';
+    return;
+  }
+  listEl.innerHTML = '';
+  filtered.forEach(w=>{
+    const item = document.createElement('div');
+    item.className = 'list-item';
+    item.innerHTML = `
+      <div class="li-main">
+        <div class="li-name">${w.name}</div>
+        <div class="li-meta"><span class="dot" style="background:${INTENSITAET_COLOR[w.intensitaet]}"></span>${w.art} · ${w.quelle} · ${w.dauer} Min${w.trainer ? ' · '+w.trainer : ''}</div>
+      </div>
+      <button class="li-del" data-id="${w.id}">×</button>
+    `;
+    item.querySelector('.li-del').onclick = async ()=>{
+      workouts = workouts.filter(x=>x.id !== w.id);
+      await saveWorkouts();
+      renderTrainerSelect();
+      updateMatchCount();
+    };
+    listEl.appendChild(item);
+  });
+}
+
+document.getElementById('dauer-min').oninput = e=>{ filters.min = e.target.value===''? null : Number(e.target.value); updateMatchCount(); };
+document.getElementById('dauer-max').oninput = e=>{ filters.max = e.target.value===''? null : Number(e.target.value); updateMatchCount(); };
+document.getElementById('trainer-select').onchange = e=>{ filters.trainer = e.target.value; updateMatchCount(); };
+document.getElementById('pick-btn').onclick = pickRandom;
+document.getElementById('reroll-btn').onclick = pickRandom;
+
+document.getElementById('schedule-btn').onclick = async ()=>{
+  const val = document.getElementById('schedule-input').value;
+  if(!val || !currentPick) return;
+  const entry = {
+    id: crypto.randomUUID(),
+    workoutId: currentPick.id,
+    name: currentPick.name,
+    art: currentPick.art,
+    quelle: currentPick.quelle,
+    dauer: currentPick.dauer,
+    when: val
+  };
+  scheduled.push(entry);
+  await saveScheduled();
+  renderUpcoming();
+  document.getElementById('schedule-input').value = '';
+};
+
+document.getElementById('add-toggle').onclick = ()=>{
+  document.getElementById('add-form').classList.toggle('show');
+};
+
+document.getElementById('save-btn').onclick = async ()=>{
+  const name = document.getElementById('f-name').value.trim();
+  if(!name){ document.getElementById('f-name').focus(); return; }
+  const w = {
+    id: crypto.randomUUID(),
+    name,
+    art: document.getElementById('f-art').value,
+    quelle: document.getElementById('f-quelle').value,
+    dauer: Number(document.getElementById('f-dauer').value) || 0,
+    intensitaet: document.getElementById('f-intensitaet').value,
+    trainer: document.getElementById('f-trainer').value.trim(),
+    link: document.getElementById('f-link').value.trim()
+  };
+  workouts.push(w);
+  await saveWorkouts();
+  ['f-name','f-dauer','f-trainer','f-link'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('add-form').classList.remove('show');
+  renderTrainerSelect();
+  updateMatchCount();
+};
+
+document.getElementById('export-btn').onclick = ()=>{
+  const backup = {exportedAt: new Date().toISOString(), workouts, scheduled};
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'trainingsauswahl-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+document.getElementById('import-btn').onclick = ()=> document.getElementById('import-file').click();
+document.getElementById('import-file').onchange = (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(!Array.isArray(data.workouts)) throw new Error('ungültiges Format');
+      workouts = data.workouts;
+      scheduled = Array.isArray(data.scheduled) ? data.scheduled : [];
+      await saveWorkouts();
+      await saveScheduled();
+      renderTrainerSelect();
+      updateMatchCount();
+      renderUpcoming();
+    }catch(err){
+      alert('Backup konnte nicht gelesen werden: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+};
+
+(async function init(){
+  await loadWorkouts();
+  await loadScheduled();
+  renderChips('chips-art', ART_OPTIONS, 'art');
+  renderChips('chips-quelle', QUELLE_OPTIONS, 'quelle');
+  renderChips('chips-intensitaet', INTENSITAET_OPTIONS, 'intensitaet');
+  renderTrainerSelect();
+  updateMatchCount();
+  renderUpcoming();
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('schedule-input').min = now.toISOString().slice(0,16);
+})();
+</script>
+</body>
+</html>
