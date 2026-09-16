@@ -277,31 +277,45 @@
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-import { initializeFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCgoi4Jr9-I6G2U-n9AxHHLDJQm7Ppx_6w",
-  authDomain: "training-planner-alexandra.firebaseapp.com",
-  projectId: "training-planner-alexandra",
-  storageBucket: "training-planner-alexandra.firebasestorage.app",
-  messagingSenderId: "95435995714",
-  appId: "1:95435995714:web:bb0992c767313f9a6f0bdb"
+// --- Supabase-Speicher (ersetzt Firebase/Firestore) ---
+const SUPABASE_URL = "https://ldcmpdpomvjtloavcbfa.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkY21wZHBvbXZqdGxvYXZjYmZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1OTE1MTgsImV4cCI6MjEwNTE2NzUxOH0.IoKOfRvO65vX8nXst8-wsh1UoiuM5TGEs6cuQhT3J5g";
+const REST_URL = SUPABASE_URL + "/rest/v1/trainingsauswahl";
+const SB_HEADERS = {
+  apikey: SUPABASE_KEY,
+  Authorization: "Bearer " + SUPABASE_KEY
 };
 
-const app = initializeApp(firebaseConfig);
-const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-const docRef = doc(db, "trainingsauswahl", "data");
+async function fetchRow(){
+  const res = await fetch(REST_URL + "?id=eq.1&select=data", { headers: SB_HEADERS });
+  if(!res.ok) throw new Error("Supabase-Lesefehler: " + res.status);
+  const rows = await res.json();
+  return (rows[0] && rows[0].data) ? rows[0].data : {};
+}
 
+async function writeRow(fullData){
+  const res = await fetch(REST_URL, {
+    method: "POST",
+    headers: {
+      ...SB_HEADERS,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates"
+    },
+    body: JSON.stringify({ id: 1, data: fullData })
+  });
+  if(!res.ok) throw new Error("Supabase-Schreibfehler: " + res.status);
+}
+
+// gleiche get/set-Schnittstelle wie vorher, jetzt gegen Supabase statt Firestore
 const storage = {
   async get(key){
-    const snap = await getDoc(docRef);
-    if(!snap.exists()) return null;
-    const data = snap.data();
+    const data = await fetchRow();
     return (key in data && data[key] != null) ? {key, value: data[key]} : null;
   },
   async set(key, value){
-    await setDoc(docRef, {[key]: value}, {merge:true});
+    const data = await fetchRow();
+    data[key] = value;
+    await writeRow(data);
     return {key, value};
   }
 };
@@ -325,12 +339,12 @@ let filters = {art:new Set(), quelle:new Set(), intensitaet:new Set(), min:null,
 
 async function loadScheduled(){
   try{
-    const res = await storage.get('scheduled', false);
+    const res = await storage.get('scheduled');
     scheduled = res ? JSON.parse(res.value) : [];
-  }catch(e){ scheduled = []; }
+  }catch(e){ console.error('Laden der Termine fehlgeschlagen', e); scheduled = []; }
 }
 async function saveScheduled(){
-  try{ await storage.set('scheduled', JSON.stringify(scheduled), false); }
+  try{ await storage.set('scheduled', JSON.stringify(scheduled)); }
   catch(e){ console.error('Speichern der Termine fehlgeschlagen', e); }
 }
 
@@ -402,15 +416,16 @@ function renderUpcoming(){
 
 async function loadWorkouts(){
   try{
-    const res = await storage.get('workouts', false);
+    const res = await storage.get('workouts');
     workouts = res ? JSON.parse(res.value) : STARTER_DATA;
-    if(!res){ await storage.set('workouts', JSON.stringify(workouts), false); }
+    if(!res){ await storage.set('workouts', JSON.stringify(workouts)); }
   }catch(e){
+    console.error('Laden der Workouts fehlgeschlagen', e);
     workouts = STARTER_DATA;
   }
 }
 async function saveWorkouts(){
-  try{ await storage.set('workouts', JSON.stringify(workouts), false); }
+  try{ await storage.set('workouts', JSON.stringify(workouts)); }
   catch(e){ console.error('Speichern fehlgeschlagen', e); }
 }
 
