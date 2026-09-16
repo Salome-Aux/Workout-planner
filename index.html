@@ -1,619 +1,3106 @@
-<!DOCTYPE html>
-<html lang="de">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trainingsauswahl</title>
-<!-- Eigenstaendige Version fuer eigene Domain/WordPress: nutzt localStorage statt Claude-Speicher -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg:#1B1A17;
-    --surface:#242220;
-    --surface-2:#2D2A26;
-    --border:#3A3630;
-    --text:#EDE9E2;
-    --text-dim:#A39E93;
-    --accent:#C9922F;
-    --accent-text:#1B1A17;
-    --low:#6E8C6B;
-    --mid:#C9922F;
-    --high:#B24C32;
-    --radius:10px;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    background:var(--bg);
-    color:var(--text);
-    font-family:'IBM Plex Sans', system-ui, sans-serif;
-    padding:24px 16px 64px;
-    -webkit-font-smoothing:antialiased;
-  }
-  .wrap{max-width:640px;margin:0 auto;}
-  h1{
-    font-family:'Space Grotesk', sans-serif;
-    font-size:28px;
-    font-weight:700;
-    margin:0 0 4px;
-    letter-spacing:-0.01em;
-  }
-  .sub{color:var(--text-dim);font-size:14px;margin:0 0 28px;line-height:1.5;max-width:44ch;}
-
-  section{margin-bottom:22px;}
-  .label{
-    font-family:'Space Grotesk', sans-serif;
-    font-size:13px;
-    font-weight:600;
-    color:var(--text-dim);
-    margin-bottom:8px;
-  }
-  .chips{display:flex;flex-wrap:wrap;gap:8px;}
-  .chip{
-    padding:7px 14px;
-    border-radius:999px;
-    border:1px solid var(--border);
-    background:var(--surface);
-    color:var(--text);
-    font-size:13.5px;
-    cursor:pointer;
-    user-select:none;
-    transition:background .15s, border-color .15s, color .15s;
-  }
-  .chip:hover{border-color:var(--accent);}
-  .chip.active{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:600;}
-
-  .row{display:flex;gap:10px;align-items:center;}
-  .num{
-    width:72px;
-    padding:9px 10px;
-    border-radius:8px;
-    border:1px solid var(--border);
-    background:var(--surface);
-    color:var(--text);
-    font-size:14px;
-  }
-  select{
-    padding:9px 10px;
-    border-radius:8px;
-    border:1px solid var(--border);
-    background:var(--surface);
-    color:var(--text);
-    font-size:14px;
-    flex:1;
-  }
-
-  .pick-btn{
-    width:100%;
-    padding:16px;
-    border-radius:var(--radius);
-    border:none;
-    background:var(--accent);
-    color:var(--accent-text);
-    font-family:'Space Grotesk', sans-serif;
-    font-size:16px;
-    font-weight:700;
-    cursor:pointer;
-    margin-top:6px;
-  }
-  .pick-btn:active{transform:scale(0.99);}
-  .count{font-size:13px;color:var(--text-dim);margin-top:8px;text-align:center;}
-
-  .result{
-    margin-top:18px;
-    padding:18px;
-    border-radius:var(--radius);
-    background:var(--surface-2);
-    border:1px solid var(--border);
-    display:none;
-  }
-  .result.show{display:block;}
-  .result-name{font-family:'Space Grotesk', sans-serif;font-size:19px;font-weight:700;margin-bottom:6px;}
-  .result-meta{font-size:13.5px;color:var(--text-dim);line-height:1.7;}
-  .result-actions{display:flex;gap:10px;margin-top:14px;}
-  .btn-ghost{
-    padding:9px 16px;
-    border-radius:8px;
-    border:1px solid var(--border);
-    background:transparent;
-    color:var(--text);
-    font-size:13.5px;
-    cursor:pointer;
-    text-decoration:none;
-    display:inline-flex;
-    align-items:center;
-  }
-  .btn-ghost:hover{border-color:var(--accent);}
-
-  hr{border:none;border-top:1px solid var(--border);margin:30px 0;}
-
-  .list-item{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:10px;
-    padding:12px 4px;
-    border-bottom:1px solid var(--border);
-  }
-  .li-main{min-width:0;}
-  .li-name{font-size:14.5px;font-weight:600;}
-  .li-meta{font-size:12.5px;color:var(--text-dim);margin-top:2px;}
-  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;position:relative;top:-1px;}
-  .li-del{
-    background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;padding:4px 8px;flex-shrink:0;
-  }
-  .li-del:hover{color:var(--high);}
-
-  .add-toggle{
-    background:none;border:1px dashed var(--border);color:var(--text-dim);
-    width:100%;padding:12px;border-radius:var(--radius);cursor:pointer;font-size:14px;margin-top:6px;
-  }
-  .add-toggle:hover{border-color:var(--accent);color:var(--text);}
-
-  .form{display:none;margin-top:14px;gap:10px;flex-direction:column;}
-  .form.show{display:flex;}
-  input[type=text]{
-    padding:10px 12px;border-radius:8px;border:1px solid var(--border);
-    background:var(--surface);color:var(--text);font-size:14px;width:100%;
-  }
-  .form-row{display:flex;gap:10px;}
-  .form-row > *{flex:1;}
-  .save-btn{
-    padding:11px;border-radius:8px;border:none;background:var(--accent);
-    color:var(--accent-text);font-weight:600;cursor:pointer;font-size:14px;
-  }
-  ::placeholder{color:var(--text-dim);opacity:.7;}
-  .empty{color:var(--text-dim);font-size:13.5px;padding:16px 4px;text-align:center;}
-
-  .schedule-row{display:flex;gap:8px;margin-top:12px;}
-  .dt-input{
-    flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--border);
-    background:var(--surface);color:var(--text);font-size:13px;
-  }
-  .upcoming-item{
-    display:flex;justify-content:space-between;align-items:center;gap:10px;
-    padding:12px 4px;border-bottom:1px solid var(--border);
-  }
-  .up-when{font-size:12.5px;color:var(--accent);font-weight:600;margin-top:2px;}
-  .up-actions{display:flex;gap:6px;flex-shrink:0;}
-  .up-btn{
-    background:none;border:1px solid var(--border);color:var(--text-dim);
-    border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer;text-decoration:none;
-  }
-  .up-btn:hover{border-color:var(--accent);color:var(--text);}
-</style>
+  <meta http-equiv="Content-Type" content="text/html; charset=x-mac-japanese">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.5">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; color: #000000; -webkit-text-stroke: #ffffff}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; color: #000000; -webkit-text-stroke: #1100e7}
+    p.p3 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; color: #000000; -webkit-text-stroke: #ffffff; min-height: 14.0px}
+    span.s1 {font-kerning: none}
+    span.s2 {text-decoration: underline ; font-kerning: none; -webkit-text-stroke: 0px #1100e7}
+    span.s3 {font-kerning: none; -webkit-text-stroke: 0px #ffffff}
+    td.td1 {width: 778.0px; margin: 0.5px 0.5px 0.5px 0.5px; padding: 1.0px 1.0px 1.0px 1.0px}
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Trainingsauswahl</h1>
-  <p class="sub">Filtern statt suchen. Wähle Art, Dauer, Intensität, Quelle oder Trainer:in — und lass dir ein passendes Workout auslosen.</p>
-
-  <section>
-    <div class="label">Art</div>
-    <div class="chips" id="chips-art"></div>
-  </section>
-
-  <section>
-    <div class="label">Quelle</div>
-    <div class="chips" id="chips-quelle"></div>
-  </section>
-
-  <section>
-    <div class="label">Intensität</div>
-    <div class="chips" id="chips-intensitaet"></div>
-  </section>
-
-  <section>
-    <div class="label">Dauer (Minuten)</div>
-    <div class="row">
-      <input class="num" type="number" id="dauer-min" placeholder="min" min="0">
-      <span style="color:var(--text-dim)">bis</span>
-      <input class="num" type="number" id="dauer-max" placeholder="max" min="0">
-    </div>
-  </section>
-
-  <section>
-    <div class="label">Trainer:in</div>
-    <select id="trainer-select"><option value="">Alle</option></select>
-  </section>
-
-  <button class="pick-btn" id="pick-btn">Workout auslosen</button>
-  <div class="count" id="match-count"></div>
-
-  <div class="result" id="result">
-    <div class="result-name" id="result-name"></div>
-    <div class="result-meta" id="result-meta"></div>
-    <div class="result-actions">
-      <button class="btn-ghost" id="reroll-btn">Nochmal</button>
-      <a class="btn-ghost" id="open-link" href="#" target="_blank" rel="noopener" style="display:none;">Öffnen</a>
-    </div>
-    <div class="schedule-row">
-      <input type="datetime-local" id="schedule-input" class="dt-input">
-      <button class="btn-ghost" id="schedule-btn">Termin planen</button>
-    </div>
-  </div>
-
-  <hr>
-
-  <div class="label" id="upcoming-label">Anstehend</div>
-  <div id="upcoming-list"></div>
-
-  <hr>
-
-  <div class="label" id="list-label">Alle Einträge</div>
-  <div id="list"></div>
-
-  <button class="add-toggle" id="add-toggle">+ Neuer Eintrag</button>
-  <div class="form" id="add-form">
-    <input type="text" id="f-name" placeholder="Name des Workouts">
-    <div class="form-row">
-      <select id="f-art">
-        <option>HIIT</option>
-        <option>Kraft</option>
-        <option>Cardio</option>
-        <option>Kettlebell</option>
-        <option>Mobility / Yoga</option>
-        <option>Sonstiges</option>
-      </select>
-      <select id="f-quelle">
-        <option>FitOn</option>
-        <option>YouTube</option>
-        <option>Crossrope</option>
-        <option>Nike Training Club</option>
-        <option>Sonstiges</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <input class="num" style="width:100%" type="number" id="f-dauer" placeholder="Dauer (Min.)" min="0">
-      <select id="f-intensitaet">
-        <option value="niedrig">niedrig</option>
-        <option value="mittel">mittel</option>
-        <option value="hoch">hoch</option>
-      </select>
-    </div>
-    <input type="text" id="f-trainer" placeholder="Trainer:in (optional)">
-    <input type="text" id="f-link" placeholder="Link (optional)">
-    <button class="save-btn" id="save-btn">Eintrag speichern</button>
-  </div>
-
-  <hr>
-  <div class="label">Sicherung</div>
-  <div class="row">
-    <button class="btn-ghost" id="export-btn">Backup exportieren</button>
-    <button class="btn-ghost" id="import-btn">Backup importieren</button>
-    <input type="file" id="import-file" accept="application/json" style="display:none">
-  </div>
-</div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-
-// Firebase-Konfiguration (Projekt: training-planner-alexandra)
-const firebaseConfig = {
-  apiKey: "AIzaSyCgoi4Jr9-I6G2U-n9AxHHLDJQm7Ppx_6w",
-  authDomain: "training-planner-alexandra.firebaseapp.com",
-  projectId: "training-planner-alexandra",
-  storageBucket: "training-planner-alexandra.firebasestorage.app",
-  messagingSenderId: "95435995714",
-  appId: "1:95435995714:web:bb0992c767313f9a6f0bdb"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const docRef = doc(db, "trainingsauswahl", "data");
-
-// Speicher-Shim: gleiche Schnittstelle wie zuvor (get/set), jetzt gegen Firestore statt localStorage
-const storage = {
-  async get(key){
-    const snap = await getDoc(docRef);
-    if(!snap.exists()) return null;
-    const data = snap.data();
-    return (key in data && data[key] != null) ? {key, value: data[key]} : null;
-  },
-  async set(key, value){
-    await setDoc(docRef, {[key]: value}, {merge:true});
-    return {key, value};
-  }
-};
-
-const ART_OPTIONS = ["HIIT","Kraft","Cardio","Kettlebell","Mobility / Yoga","Sonstiges"];
-const QUELLE_OPTIONS = ["FitOn","YouTube","Crossrope","Nike Training Club","Sonstiges"];
-const INTENSITAET_OPTIONS = ["niedrig","mittel","hoch"];
-const INTENSITAET_COLOR = {niedrig:"var(--low)", mittel:"var(--mid)", hoch:"var(--high)"};
-
-const STARTER_DATA = [
-  {id:crypto.randomUUID(), name:"Kettlebell Flow (Beispiel – bitte anpassen)", art:"Kettlebell", quelle:"YouTube", dauer:20, intensitaet:"mittel", trainer:"", link:""},
-  {id:crypto.randomUUID(), name:"HIIT Sprint Intervalle (Beispiel)", art:"HIIT", quelle:"Nike Training Club", dauer:25, intensitaet:"hoch", trainer:"", link:""},
-  {id:crypto.randomUUID(), name:"Jump Rope Basics (Beispiel)", art:"Cardio", quelle:"Crossrope", dauer:15, intensitaet:"mittel", trainer:"", link:""},
-  {id:crypto.randomUUID(), name:"Ganzkörper Kraft (Beispiel)", art:"Kraft", quelle:"FitOn", dauer:30, intensitaet:"mittel", trainer:"", link:""}
-];
-
-let workouts = [];
-let scheduled = [];
-let currentPick = null;
-let filters = {art:new Set(), quelle:new Set(), intensitaet:new Set(), min:null, max:null, trainer:""};
-
-async function loadScheduled(){
-  try{
-    const res = await storage.get('scheduled', false);
-    scheduled = res ? JSON.parse(res.value) : [];
-  }catch(e){ scheduled = []; }
-}
-async function saveScheduled(){
-  try{ await storage.set('scheduled', JSON.stringify(scheduled), false); }
-  catch(e){ console.error('Speichern der Termine fehlgeschlagen', e); }
-}
-
-function pad(n){ return String(n).padStart(2,'0'); }
-function fmtICSDate(d){
-  return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+'T'+pad(d.getUTCHours())+pad(d.getUTCMinutes())+'00Z';
-}
-function buildICS(entry){
-  const start = new Date(entry.when);
-  const end = new Date(start.getTime() + (entry.dauer||30)*60000);
-  const lines = [
-    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Trainingsauswahl//DE','BEGIN:VEVENT',
-    'UID:'+entry.id+'@trainingsauswahl',
-    'DTSTAMP:'+fmtICSDate(new Date()),
-    'DTSTART:'+fmtICSDate(start),
-    'DTEND:'+fmtICSDate(end),
-    'SUMMARY:'+entry.name,
-    'DESCRIPTION:'+entry.art+' \\u00b7 '+entry.quelle+' \\u00b7 '+entry.dauer+' Min',
-    'END:VEVENT','END:VCALENDAR'
-  ];
-  return lines.join('\r\n');
-}
-function downloadICS(entry){
-  const blob = new Blob([buildICS(entry)], {type:'text/calendar'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = entry.name.replace(/[^a-z0-9]+/gi,'_').toLowerCase() + '.ics';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function renderUpcoming(){
-  const el = document.getElementById('upcoming-list');
-  const now = new Date();
-  const upcoming = scheduled
-    .filter(s => new Date(s.when) >= new Date(now.getTime() - 60*60000))
-    .sort((a,b)=> new Date(a.when) - new Date(b.when));
-  document.getElementById('upcoming-label').textContent = upcoming.length ? `Anstehend (${upcoming.length})` : 'Anstehend';
-  if(upcoming.length === 0){
-    el.innerHTML = '<div class="empty">Noch nichts geplant. Wähle oben ein Workout aus und plane einen Termin.</div>';
-    return;
-  }
-  el.innerHTML = '';
-  upcoming.forEach(s=>{
-    const d = new Date(s.when);
-    const whenStr = d.toLocaleString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
-    const item = document.createElement('div');
-    item.className = 'upcoming-item';
-    item.innerHTML = `
-      <div class="li-main">
-        <div class="li-name">${s.name}</div>
-        <div class="up-when">${whenStr}</div>
-      </div>
-      <div class="up-actions">
-        <button class="up-btn" data-act="ics">Kalender</button>
-        <button class="up-btn" data-act="del">Entfernen</button>
-      </div>
-    `;
-    item.querySelector('[data-act="ics"]').onclick = ()=> downloadICS(s);
-    item.querySelector('[data-act="del"]').onclick = async ()=>{
-      scheduled = scheduled.filter(x=>x.id !== s.id);
-      await saveScheduled();
-      renderUpcoming();
-    };
-    el.appendChild(item);
-  });
-}
-
-async function loadWorkouts(){
-  try{
-    const res = await storage.get('workouts', false);
-    workouts = res ? JSON.parse(res.value) : STARTER_DATA;
-    if(!res){ await storage.set('workouts', JSON.stringify(workouts), false); }
-  }catch(e){
-    workouts = STARTER_DATA;
-  }
-}
-async function saveWorkouts(){
-  try{ await storage.set('workouts', JSON.stringify(workouts), false); }
-  catch(e){ console.error('Speichern fehlgeschlagen', e); }
-}
-
-function renderChips(containerId, options, key){
-  const el = document.getElementById(containerId);
-  el.innerHTML = '';
-  options.forEach(opt=>{
-    const chip = document.createElement('div');
-    chip.className = 'chip' + (filters[key].has(opt) ? ' active' : '');
-    chip.textContent = opt;
-    chip.onclick = ()=>{
-      if(filters[key].has(opt)) filters[key].delete(opt);
-      else filters[key].add(opt);
-      renderChips(containerId, options, key);
-      updateMatchCount();
-    };
-    el.appendChild(chip);
-  });
-}
-
-function renderTrainerSelect(){
-  const sel = document.getElementById('trainer-select');
-  const trainers = [...new Set(workouts.map(w=>w.trainer).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">Alle</option>' + trainers.map(t=>`<option value="${t}">${t}</option>`).join('');
-  sel.value = filters.trainer;
-}
-
-function matches(w){
-  if(filters.art.size && !filters.art.has(w.art)) return false;
-  if(filters.quelle.size && !filters.quelle.has(w.quelle)) return false;
-  if(filters.intensitaet.size && !filters.intensitaet.has(w.intensitaet)) return false;
-  if(filters.min!==null && !isNaN(filters.min) && w.dauer < filters.min) return false;
-  if(filters.max!==null && !isNaN(filters.max) && w.dauer > filters.max) return false;
-  if(filters.trainer && w.trainer !== filters.trainer) return false;
-  return true;
-}
-
-function updateMatchCount(){
-  const n = workouts.filter(matches).length;
-  document.getElementById('match-count').textContent =
-    n === 0 ? 'Keine Treffer mit diesen Filtern' :
-    n === 1 ? '1 Workout passt' : n + ' Workouts passen';
-  renderList();
-}
-
-function pickRandom(){
-  const pool = workouts.filter(matches);
-  const resultEl = document.getElementById('result');
-  if(pool.length === 0){
-    resultEl.classList.remove('show');
-    return;
-  }
-  const w = pool[Math.floor(Math.random()*pool.length)];
-  currentPick = w;
-  document.getElementById('result-name').textContent = w.name;
-  document.getElementById('result-meta').innerHTML =
-    `${w.art} · ${w.quelle} · ${w.dauer} Min · <span class="dot" style="background:${INTENSITAET_COLOR[w.intensitaet]}"></span>${w.intensitaet}` +
-    (w.trainer ? ` · ${w.trainer}` : '');
-  const linkEl = document.getElementById('open-link');
-  if(w.link){ linkEl.href = w.link; linkEl.style.display='inline-flex'; }
-  else{ linkEl.style.display='none'; }
-  resultEl.classList.add('show');
-}
-
-function renderList(){
-  const listEl = document.getElementById('list');
-  const filtered = workouts.filter(matches);
-  document.getElementById('list-label').textContent =
-    (filtered.length === workouts.length) ? `Alle Einträge (${workouts.length})` : `Gefiltert (${filtered.length} von ${workouts.length})`;
-  if(filtered.length === 0){
-    listEl.innerHTML = '<div class="empty">Keine Einträge in dieser Auswahl.</div>';
-    return;
-  }
-  listEl.innerHTML = '';
-  filtered.forEach(w=>{
-    const item = document.createElement('div');
-    item.className = 'list-item';
-    item.innerHTML = `
-      <div class="li-main">
-        <div class="li-name">${w.name}</div>
-        <div class="li-meta"><span class="dot" style="background:${INTENSITAET_COLOR[w.intensitaet]}"></span>${w.art} · ${w.quelle} · ${w.dauer} Min${w.trainer ? ' · '+w.trainer : ''}</div>
-      </div>
-      <button class="li-del" data-id="${w.id}">×</button>
-    `;
-    item.querySelector('.li-del').onclick = async ()=>{
-      workouts = workouts.filter(x=>x.id !== w.id);
-      await saveWorkouts();
-      renderTrainerSelect();
-      updateMatchCount();
-    };
-    listEl.appendChild(item);
-  });
-}
-
-document.getElementById('dauer-min').oninput = e=>{ filters.min = e.target.value===''? null : Number(e.target.value); updateMatchCount(); };
-document.getElementById('dauer-max').oninput = e=>{ filters.max = e.target.value===''? null : Number(e.target.value); updateMatchCount(); };
-document.getElementById('trainer-select').onchange = e=>{ filters.trainer = e.target.value; updateMatchCount(); };
-document.getElementById('pick-btn').onclick = pickRandom;
-document.getElementById('reroll-btn').onclick = pickRandom;
-
-document.getElementById('schedule-btn').onclick = async ()=>{
-  const val = document.getElementById('schedule-input').value;
-  if(!val || !currentPick) return;
-  const entry = {
-    id: crypto.randomUUID(),
-    workoutId: currentPick.id,
-    name: currentPick.name,
-    art: currentPick.art,
-    quelle: currentPick.quelle,
-    dauer: currentPick.dauer,
-    when: val
-  };
-  scheduled.push(entry);
-  await saveScheduled();
-  renderUpcoming();
-  document.getElementById('schedule-input').value = '';
-};
-
-document.getElementById('add-toggle').onclick = ()=>{
-  document.getElementById('add-form').classList.toggle('show');
-};
-
-document.getElementById('save-btn').onclick = async ()=>{
-  const name = document.getElementById('f-name').value.trim();
-  if(!name){ document.getElementById('f-name').focus(); return; }
-  const w = {
-    id: crypto.randomUUID(),
-    name,
-    art: document.getElementById('f-art').value,
-    quelle: document.getElementById('f-quelle').value,
-    dauer: Number(document.getElementById('f-dauer').value) || 0,
-    intensitaet: document.getElementById('f-intensitaet').value,
-    trainer: document.getElementById('f-trainer').value.trim(),
-    link: document.getElementById('f-link').value.trim()
-  };
-  workouts.push(w);
-  await saveWorkouts();
-  ['f-name','f-dauer','f-trainer','f-link'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('add-form').classList.remove('show');
-  renderTrainerSelect();
-  updateMatchCount();
-};
-
-document.getElementById('export-btn').onclick = ()=>{
-  const backup = {exportedAt: new Date().toISOString(), workouts, scheduled};
-  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'trainingsauswahl-backup-' + new Date().toISOString().slice(0,10) + '.json';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-};
-
-document.getElementById('import-btn').onclick = ()=> document.getElementById('import-file').click();
-document.getElementById('import-file').onchange = (e)=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async (ev)=>{
-    try{
-      const data = JSON.parse(ev.target.result);
-      if(!Array.isArray(data.workouts)) throw new Error('ungültiges Format');
-      workouts = data.workouts;
-      scheduled = Array.isArray(data.scheduled) ? data.scheduled : [];
-      await saveWorkouts();
-      await saveScheduled();
-      renderTrainerSelect();
-      updateMatchCount();
-      renderUpcoming();
-    }catch(err){
-      alert('Backup konnte nicht gelesen werden: ' + err.message);
-    }
-  };
-  reader.readAsText(file);
-  e.target.value = '';
-};
-
-(async function init(){
-  await loadWorkouts();
-  await loadScheduled();
-  renderChips('chips-art', ART_OPTIONS, 'art');
-  renderChips('chips-quelle', QUELLE_OPTIONS, 'quelle');
-  renderChips('chips-intensitaet', INTENSITAET_OPTIONS, 'intensitaet');
-  renderTrainerSelect();
-  updateMatchCount();
-  renderUpcoming();
-  const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-  document.getElementById('schedule-input').min = now.toISOString().slice(0,16);
-})();
-</script>
+<table cellspacing="0" cellpadding="0">
+  <tbody>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;!DOCTYPE html&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;html lang="de"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;head&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;meta charset="UTF-8"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;title&gt;Trainingsauswahl&lt;/title&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;!-- Eigenstaendige Version fuer eigene Domain/WordPress: nutzt localStorage statt Claude-Speicher --&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;link rel="preconnect" href="<a href="https://fonts.googleapis.com/"><span class="s2">https://fonts.googleapis.com</span></a>"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p2"><span class="s3">&lt;link href="<a href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap"><span class="s2">https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap</span></a>" rel="stylesheet"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;style&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">:root{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--bg:#1B1A17;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--surface:#242220;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--surface-2:#2D2A26;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--border:#3A3630;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--text:#EDE9E2;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--text-dim:#A39E93;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--accent:#C9922F;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--accent-text:#1B1A17;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--low:#6E8C6B;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--mid:#C9922F;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--high:#B24C32;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">--radius:10px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">*{box-sizing:border-box;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">body{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">margin:0;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:var(--bg);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">color:var(--text);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-family:'IBM Plex Sans', system-ui, sans-serif;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">padding:24px 16px 64px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">-webkit-font-smoothing:antialiased;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.wrap{max-width:640px;margin:0 auto;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">h1{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-family:'Space Grotesk', sans-serif;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-size:28px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-weight:700;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">margin:0 0 4px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">letter-spacing:-0.01em;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.sub{color:var(--text-dim);font-size:14px;margin:0 0 28px;line-height:1.5;max-width:44ch;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">section{margin-bottom:22px;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.label{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-family:'Space Grotesk', sans-serif;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-size:13px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-weight:600;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">color:var(--text-dim);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">margin-bottom:8px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.chips{display:flex;flex-wrap:wrap;gap:8px;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.chip{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">padding:7px 14px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border-radius:999px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border:1px solid var(--border);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:var(--surface);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">color:var(--text);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-size:13.5px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">cursor:pointer;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">user-select:none;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">transition:background .15s, border-color .15s, color .15s;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.chip:hover{border-color:var(--accent);}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.chip.active{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:600;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.row{display:flex;gap:10px;align-items:center;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.num{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">width:72px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">padding:9px 10px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border-radius:8px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border:1px solid var(--border);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:var(--surface);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">color:var(--text);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-size:14px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">select{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">padding:9px 10px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border-radius:8px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border:1px solid var(--border);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:var(--surface);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">color:var(--text);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-size:14px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">flex:1;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.pick-btn{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">width:100%;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">padding:16px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border-radius:var(--radius);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border:none;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:var(--accent);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">color:var(--accent-text);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-family:'Space Grotesk', sans-serif;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-size:16px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-weight:700;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">cursor:pointer;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">margin-top:6px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.pick-btn:active{transform:scale(0.99);}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.count{font-size:13px;color:var(--text-dim);margin-top:8px;text-align:center;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.result{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">margin-top:18px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">padding:18px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border-radius:var(--radius);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:var(--surface-2);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border:1px solid var(--border);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">display:none;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.result.show{display:block;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.result-name{font-family:'Space Grotesk', sans-serif;font-size:19px;font-weight:700;margin-bottom:6px;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.result-meta{font-size:13.5px;color:var(--text-dim);line-height:1.7;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.result-actions{display:flex;gap:10px;margin-top:14px;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.btn-ghost{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">padding:9px 16px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border-radius:8px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border:1px solid var(--border);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:transparent;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">color:var(--text);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">font-size:13.5px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">cursor:pointer;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">text-decoration:none;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">display:inline-flex;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">align-items:center;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.btn-ghost:hover{border-color:var(--accent);}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">hr{border:none;border-top:1px solid var(--border);margin:30px 0;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.list-item{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">display:flex;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">justify-content:space-between;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">align-items:center;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">gap:10px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">padding:12px 4px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border-bottom:1px solid var(--border);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.li-main{min-width:0;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.li-name{font-size:14.5px;font-weight:600;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.li-meta{font-size:12.5px;color:var(--text-dim);margin-top:2px;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;position:relative;top:-1px;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.li-del{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;padding:4px 8px;flex-shrink:0;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.li-del:hover{color:var(--high);}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.add-toggle{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:none;border:1px dashed var(--border);color:var(--text-dim);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">width:100%;padding:12px;border-radius:var(--radius);cursor:pointer;font-size:14px;margin-top:6px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.add-toggle:hover{border-color:var(--accent);color:var(--text);}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.form{display:none;margin-top:14px;gap:10px;flex-direction:column;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.form.show{display:flex;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">input[type=text]{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">padding:10px 12px;border-radius:8px;border:1px solid var(--border);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:var(--surface);color:var(--text);font-size:14px;width:100%;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.form-row{display:flex;gap:10px;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.form-row &gt; *{flex:1;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.save-btn{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">padding:11px;border-radius:8px;border:none;background:var(--accent);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">color:var(--accent-text);font-weight:600;cursor:pointer;font-size:14px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">::placeholder{color:var(--text-dim);opacity:.7;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.empty{color:var(--text-dim);font-size:13.5px;padding:16px 4px;text-align:center;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.schedule-row{display:flex;gap:8px;margin-top:12px;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.dt-input{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--border);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:var(--surface);color:var(--text);font-size:13px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.upcoming-item{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">display:flex;justify-content:space-between;align-items:center;gap:10px;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">padding:12px 4px;border-bottom:1px solid var(--border);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.up-when{font-size:12.5px;color:var(--accent);font-weight:600;margin-top:2px;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.up-actions{display:flex;gap:6px;flex-shrink:0;}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.up-btn{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">background:none;border:1px solid var(--border);color:var(--text-dim);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer;text-decoration:none;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.up-btn:hover{border-color:var(--accent);color:var(--text);}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/style&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/head&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;body&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="wrap"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;h1&gt;Trainingsauswahl&lt;/h1&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;p class="sub"&gt;Filtern statt suchen. W&#xE4;hle Art, Dauer, Intensit&#xE4;t, Quelle oder Trainer:in �\ und lass dir ein passendes Workout auslosen.&lt;/p&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;section&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="label"&gt;Art&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="chips" id="chips-art"&gt;&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/section&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;section&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="label"&gt;Quelle&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="chips" id="chips-quelle"&gt;&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/section&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;section&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="label"&gt;Intensit&#xE4;t&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="chips" id="chips-intensitaet"&gt;&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/section&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;section&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="label"&gt;Dauer (Minuten)&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="row"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;input class="num" type="number" id="dauer-min" placeholder="min" min="0"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;span style="color:var(--text-dim)"&gt;bis&lt;/span&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;input class="num" type="number" id="dauer-max" placeholder="max" min="0"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/section&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;section&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="label"&gt;Trainer:in&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;select id="trainer-select"&gt;&lt;option value=""&gt;Alle&lt;/option&gt;&lt;/select&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/section&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;button class="pick-btn" id="pick-btn"&gt;Workout auslosen&lt;/button&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="count" id="match-count"&gt;&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="result" id="result"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="result-name" id="result-name"&gt;&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="result-meta" id="result-meta"&gt;&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="result-actions"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;button class="btn-ghost" id="reroll-btn"&gt;Nochmal&lt;/button&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;a class="btn-ghost" id="open-link" href="</span><span class="s2">#</span><span class="s1">" target="_blank" rel="noopener" style="display:none;"&gt;&#xD6;ffnen&lt;/a&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="schedule-row"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;input type="datetime-local" id="schedule-input" class="dt-input"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;button class="btn-ghost" id="schedule-btn"&gt;Termin planen&lt;/button&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;hr&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="label" id="upcoming-label"&gt;Anstehend&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div id="upcoming-list"&gt;&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;hr&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="label" id="list-label"&gt;Alle Eintr&#xE4;ge&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div id="list"&gt;&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;button class="add-toggle" id="add-toggle"&gt;+ Neuer Eintrag&lt;/button&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="form" id="add-form"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;input type="text" id="f-name" placeholder="Name des Workouts"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="form-row"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;select id="f-art"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option&gt;HIIT&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option&gt;Kraft&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option&gt;Cardio&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option&gt;Kettlebell&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option&gt;Mobility / Yoga&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option&gt;Sonstiges&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/select&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;select id="f-quelle"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option&gt;FitOn&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option&gt;YouTube&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option&gt;Crossrope&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option&gt;Nike Training Club&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option&gt;Sonstiges&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/select&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="form-row"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;input class="num" style="width:100%" type="number" id="f-dauer" placeholder="Dauer (Min.)" min="0"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;select id="f-intensitaet"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option value="niedrig"&gt;niedrig&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option value="mittel"&gt;mittel&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;option value="hoch"&gt;hoch&lt;/option&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/select&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;input type="text" id="f-trainer" placeholder="Trainer:in (optional)"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;input type="text" id="f-link" placeholder="Link (optional)"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;button class="save-btn" id="save-btn"&gt;Eintrag speichern&lt;/button&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;hr&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="label"&gt;Sicherung&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="row"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;button class="btn-ghost" id="export-btn"&gt;Backup exportieren&lt;/button&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;button class="btn-ghost" id="import-btn"&gt;Backup importieren&lt;/button&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;input type="file" id="import-file" accept="application/json" style="display:none"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;script type="module"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";</span></p>
+        <p class="p1"><span class="s1">import { initializeFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">// Firebase-Konfiguration (Projekt: training-planner-alexandra)</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const firebaseConfig = {</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">apiKey: "AIzaSyCgoi4Jr9-I6G2U-n9AxHHLDJQm7Ppx_6w",</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">authDomain: "training-planner-alexandra.firebaseapp.com",</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">projectId: "training-planner-alexandra",</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">storageBucket: "training-planner-alexandra.firebasestorage.app",</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">messagingSenderId: "95435995714",</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">appId: "1:95435995714:web:bb0992c767313f9a6f0bdb"</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const app = initializeApp(firebaseConfig);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">// Speicher-Shim: gleiche Schnittstelle wie zuvor (get/set), jetzt gegen Firestore statt localStorage</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const storage = {</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">async get(key){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const snap = await getDoc(docRef);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(!snap.exists()) return null;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const data = snap.data();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">return (key in data &amp;&amp; data[key] != null) ? {key, value: data[key]} : null;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">},</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">async set(key, value){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">await setDoc(docRef, {[key]: value}, {merge:true});</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">return {key, value};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const ART_OPTIONS = ["HIIT","Kraft","Cardio","Kettlebell","Mobility / Yoga","Sonstiges"];</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const QUELLE_OPTIONS = ["FitOn","YouTube","Crossrope","Nike Training Club","Sonstiges"];</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const INTENSITAET_OPTIONS = ["niedrig","mittel","hoch"];</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const INTENSITAET_COLOR = {niedrig:"var(--low)", mittel:"var(--mid)", hoch:"var(--high)"};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const STARTER_DATA = [</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">{id:crypto.randomUUID(), name:"Kettlebell Flow (Beispiel &#x2013; bitte anpassen)", art:"Kettlebell", quelle:"YouTube", dauer:20, intensitaet:"mittel", trainer:"", link:""},</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">{id:crypto.randomUUID(), name:"HIIT Sprint Intervalle (Beispiel)", art:"HIIT", quelle:"Nike Training Club", dauer:25, intensitaet:"hoch", trainer:"", link:""},</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">{id:crypto.randomUUID(), name:"Jump Rope Basics (Beispiel)", art:"Cardio", quelle:"Crossrope", dauer:15, intensitaet:"mittel", trainer:"", link:""},</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">{id:crypto.randomUUID(), name:"Ganzk&#xF6;rper Kraft (Beispiel)", art:"Kraft", quelle:"FitOn", dauer:30, intensitaet:"mittel", trainer:"", link:""}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">];</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">let workouts = [];</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">let scheduled = [];</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">let currentPick = null;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">let filters = {art:new Set(), quelle:new Set(), intensitaet:new Set(), min:null, max:null, trainer:""};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">async function loadScheduled(){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">try{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const res = await storage.get('scheduled', false);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">scheduled = res ? JSON.parse(res.value) : [];</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}catch(e){ scheduled = []; }</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">async function saveScheduled(){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">try{ await storage.set('scheduled', JSON.stringify(scheduled), false); }</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">catch(e){ console.error('Speichern der Termine fehlgeschlagen', e); }</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">function pad(n){ return String(n).padStart(2,'0'); }</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">function fmtICSDate(d){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+'T'+pad(d.getUTCHours())+pad(d.getUTCMinutes())+'00Z';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">function buildICS(entry){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const start = new Date(entry.when);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const end = new Date(start.getTime() + (entry.dauer||30)*60000);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const lines = [</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Trainingsauswahl//DE','BEGIN:VEVENT',</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">'UID:'+entry.id+'@trainingsauswahl',</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">'DTSTAMP:'+fmtICSDate(new Date()),</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">'DTSTART:'+fmtICSDate(start),</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">'DTEND:'+fmtICSDate(end),</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">'SUMMARY:'+entry.name,</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">'DESCRIPTION:'+entry.art+' ��u00b7 '+entry.quelle+' ��u00b7 '+entry.dauer+' Min',</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">'END:VEVENT','END:VCALENDAR'</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">];</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">return lines.join('�r�n');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">function downloadICS(entry){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const blob = new Blob([buildICS(entry)], {type:'text/calendar'});</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const url = URL.createObjectURL(blob);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const a = document.createElement('a');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">a.href = url;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">a.download = entry.name.replace(/[^a-z0-9]+/gi,'_').toLowerCase() + '.ics';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.body.appendChild(a); a.click(); document.body.removeChild(a);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">URL.revokeObjectURL(url);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">function renderUpcoming(){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const el = document.getElementById('upcoming-list');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const now = new Date();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const upcoming = scheduled</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.filter(s =&gt; new Date(s.when) &gt;= new Date(now.getTime() - 60*60000))</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">.sort((a,b)=&gt; new Date(a.when) - new Date(b.when));</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('upcoming-label').textContent = upcoming.length ? `Anstehend (${upcoming.length})` : 'Anstehend';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(upcoming.length === 0){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">el.innerHTML = '&lt;div class="empty"&gt;Noch nichts geplant. W&#xE4;hle oben ein Workout aus und plane einen Termin.&lt;/div&gt;';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">return;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">el.innerHTML = '';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">upcoming.forEach(s=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const d = new Date(s.when);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const whenStr = d.toLocaleString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const item = document.createElement('div');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">item.className = 'upcoming-item';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">item.innerHTML = `</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="li-main"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="li-name"&gt;${s.name}&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="up-when"&gt;${whenStr}&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="up-actions"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;button class="up-btn" data-act="ics"&gt;Kalender&lt;/button&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;button class="up-btn" data-act="del"&gt;Entfernen&lt;/button&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">`;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">item.querySelector('[data-act="ics"]').onclick = ()=&gt; downloadICS(s);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">item.querySelector('[data-act="del"]').onclick = async ()=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">scheduled = scheduled.filter(x=&gt;x.id !== s.id);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">await saveScheduled();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderUpcoming();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">el.appendChild(item);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">});</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">async function loadWorkouts(){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">try{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const res = await storage.get('workouts', false);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">workouts = res ? JSON.parse(res.value) : STARTER_DATA;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(!res){ await storage.set('workouts', JSON.stringify(workouts), false); }</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}catch(e){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">workouts = STARTER_DATA;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">async function saveWorkouts(){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">try{ await storage.set('workouts', JSON.stringify(workouts), false); }</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">catch(e){ console.error('Speichern fehlgeschlagen', e); }</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">function renderChips(containerId, options, key){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const el = document.getElementById(containerId);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">el.innerHTML = '';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">options.forEach(opt=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const chip = document.createElement('div');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">chip.className = 'chip' + (filters[key].has(opt) ? ' active' : '');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">chip.textContent = opt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">chip.onclick = ()=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(filters[key].has(opt)) filters[key].delete(opt);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">else filters[key].add(opt);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderChips(containerId, options, key);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">updateMatchCount();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">el.appendChild(chip);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">});</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">function renderTrainerSelect(){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const sel = document.getElementById('trainer-select');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const trainers = [...new Set(workouts.map(w=&gt;w.trainer).filter(Boolean))].sort();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">sel.innerHTML = '&lt;option value=""&gt;Alle&lt;/option&gt;' + trainers.map(t=&gt;`&lt;option value="${t}"&gt;${t}&lt;/option&gt;`).join('');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">sel.value = filters.trainer;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">function matches(w){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(filters.art.size &amp;&amp; !filters.art.has(w.art)) return false;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(filters.quelle.size &amp;&amp; !filters.quelle.has(w.quelle)) return false;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(filters.intensitaet.size &amp;&amp; !filters.intensitaet.has(w.intensitaet)) return false;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(filters.min!==null &amp;&amp; !isNaN(filters.min) &amp;&amp; w.dauer &lt; filters.min) return false;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(filters.max!==null &amp;&amp; !isNaN(filters.max) &amp;&amp; w.dauer &gt; filters.max) return false;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(filters.trainer &amp;&amp; w.trainer !== filters.trainer) return false;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">return true;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">function updateMatchCount(){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const n = workouts.filter(matches).length;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('match-count').textContent =</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">n === 0 ? 'Keine Treffer mit diesen Filtern' :</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">n === 1 ? '1 Workout passt' : n + ' Workouts passen';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderList();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">function pickRandom(){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const pool = workouts.filter(matches);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const resultEl = document.getElementById('result');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(pool.length === 0){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">resultEl.classList.remove('show');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">return;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const w = pool[Math.floor(Math.random()*pool.length)];</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">currentPick = w;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('result-name').textContent = w.name;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('result-meta').innerHTML =</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">`${w.art} &#xB7; ${w.quelle} &#xB7; ${w.dauer} Min &#xB7; &lt;span class="dot" style="background:${INTENSITAET_COLOR[w.intensitaet]}"&gt;&lt;/span&gt;${w.intensitaet}` +</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">(w.trainer ? ` &#xB7; ${w.trainer}` : '');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const linkEl = document.getElementById('open-link');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(w.link){ linkEl.href = w.link; linkEl.style.display='inline-flex'; }</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">else{ linkEl.style.display='none'; }</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">resultEl.classList.add('show');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">function renderList(){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const listEl = document.getElementById('list');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const filtered = workouts.filter(matches);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('list-label').textContent =</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">(filtered.length === workouts.length) ? `Alle Eintr&#xE4;ge (${workouts.length})` : `Gefiltert (${filtered.length} von ${workouts.length})`;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(filtered.length === 0){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">listEl.innerHTML = '&lt;div class="empty"&gt;Keine Eintr&#xE4;ge in dieser Auswahl.&lt;/div&gt;';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">return;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">listEl.innerHTML = '';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">filtered.forEach(w=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const item = document.createElement('div');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">item.className = 'list-item';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">item.innerHTML = `</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="li-main"&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="li-name"&gt;${w.name}&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;div class="li-meta"&gt;&lt;span class="dot" style="background:${INTENSITAET_COLOR[w.intensitaet]}"&gt;&lt;/span&gt;${w.art} &#xB7; ${w.quelle} &#xB7; ${w.dauer} Min${w.trainer ? ' &#xB7; '+w.trainer : ''}&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;button class="li-del" data-id="${w.id}"&gt;�~&lt;/button&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">`;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">item.querySelector('.li-del').onclick = async ()=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">workouts = workouts.filter(x=&gt;x.id !== w.id);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">await saveWorkouts();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderTrainerSelect();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">updateMatchCount();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">listEl.appendChild(item);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">});</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('dauer-min').oninput = e=&gt;{ filters.min = e.target.value===''? null : Number(e.target.value); updateMatchCount(); };</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('dauer-max').oninput = e=&gt;{ filters.max = e.target.value===''? null : Number(e.target.value); updateMatchCount(); };</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('trainer-select').onchange = e=&gt;{ filters.trainer = e.target.value; updateMatchCount(); };</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('pick-btn').onclick = pickRandom;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('reroll-btn').onclick = pickRandom;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('schedule-btn').onclick = async ()=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const val = document.getElementById('schedule-input').value;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(!val || !currentPick) return;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const entry = {</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">id: crypto.randomUUID(),</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">workoutId: currentPick.id,</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">name: currentPick.name,</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">art: currentPick.art,</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">quelle: currentPick.quelle,</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">dauer: currentPick.dauer,</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">when: val</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">scheduled.push(entry);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">await saveScheduled();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderUpcoming();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('schedule-input').value = '';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('add-toggle').onclick = ()=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('add-form').classList.toggle('show');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('save-btn').onclick = async ()=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const name = document.getElementById('f-name').value.trim();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(!name){ document.getElementById('f-name').focus(); return; }</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const w = {</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">id: crypto.randomUUID(),</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">name,</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">art: document.getElementById('f-art').value,</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">quelle: document.getElementById('f-quelle').value,</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">dauer: Number(document.getElementById('f-dauer').value) || 0,</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">intensitaet: document.getElementById('f-intensitaet').value,</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">trainer: document.getElementById('f-trainer').value.trim(),</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">link: document.getElementById('f-link').value.trim()</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">workouts.push(w);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">await saveWorkouts();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">['f-name','f-dauer','f-trainer','f-link'].forEach(id=&gt;document.getElementById(id).value='');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('add-form').classList.remove('show');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderTrainerSelect();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">updateMatchCount();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('export-btn').onclick = ()=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const backup = {exportedAt: new Date().toISOString(), workouts, scheduled};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const url = URL.createObjectURL(blob);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const a = document.createElement('a');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">a.href = url;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">a.download = 'trainingsauswahl-backup-' + new Date().toISOString().slice(0,10) + '.json';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.body.appendChild(a); a.click(); document.body.removeChild(a);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">URL.revokeObjectURL(url);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('import-btn').onclick = ()=&gt; document.getElementById('import-file').click();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('import-file').onchange = (e)=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const file = e.target.files[0];</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(!file) return;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const reader = new FileReader();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">reader.onload = async (ev)=&gt;{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">try{</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const data = JSON.parse(ev.target.result);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">if(!Array.isArray(data.workouts)) throw new Error('ung&#xFC;ltiges Format');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">workouts = data.workouts;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">scheduled = Array.isArray(data.scheduled) ? data.scheduled : [];</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">await saveWorkouts();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">await saveScheduled();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderTrainerSelect();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">updateMatchCount();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderUpcoming();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}catch(err){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">alert('Backup konnte nicht gelesen werden: ' + err.message);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">}</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">reader.readAsText(file);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">e.target.value = '';</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">};</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p3"><span class="s1"></span><br></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">(async function init(){</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">await Promise.all([loadWorkouts(), loadScheduled()]);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderChips('chips-art', ART_OPTIONS, 'art');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderChips('chips-quelle', QUELLE_OPTIONS, 'quelle');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderChips('chips-intensitaet', INTENSITAET_OPTIONS, 'intensitaet');</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderTrainerSelect();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">updateMatchCount();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">renderUpcoming();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">const now = new Date();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">now.setMinutes(now.getMinutes() - now.getTimezoneOffset());</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">document.getElementById('schedule-input').min = now.toISOString().slice(0,16);</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">})();</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/script&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/body&gt;</span></p>
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle" class="td1">
+        <p class="p1"><span class="s1">&lt;/html</span></p>
+      </td>
+    </tr>
+  </tbody>
+</table>
 </body>
 </html>
